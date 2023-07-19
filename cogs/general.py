@@ -16,10 +16,11 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from helpers import checks
+from helpers.mr_engineer_bot import MrEngineer
 
 
 class General(commands.Cog, name="general"):
-    def __init__(self, bot):
+    def __init__(self, bot: MrEngineer):
         self.bot = bot
 
     @commands.hybrid_command(
@@ -27,20 +28,23 @@ class General(commands.Cog, name="general"):
     )
     @checks.not_blacklisted()
     async def help(self, context: Context) -> None:
-        prefix = self.bot.config["prefix"]
+        prefix = self.bot.env.prefix
+        print(prefix)
         embed = discord.Embed(
-            title="Help", description="List of available commands:", color=0x9C84EF
+            title="Help",
+            description=f"List of available commands (replace `/` with `{prefix}` if you like):",
+            color=0x9C84EF,
         )
-        for i in self.bot.cogs:
-            cog = self.bot.get_cog(i.lower())
-            commands = cog.get_commands()
+        for command_category in self.bot.cogs:
+            cog = self.bot.get_cog(command_category.lower())
+            bot_commands = cog.get_commands()
             data = []
-            for command in commands:
+            for command in bot_commands:
                 description = command.description.partition("\n")[0]
-                data.append(f"{prefix}{command.name} - {description}")
+                data.append(f"`/{command.name}` - {description}")
             help_text = "\n".join(data)
             embed.add_field(
-                name=i.capitalize(), value=f"```{help_text}```", inline=False
+                name=command_category.capitalize(), value=f"{help_text}", inline=False
             )
         await context.send(embed=embed)
 
@@ -56,17 +60,17 @@ class General(commands.Cog, name="general"):
         :param context: The hybrid command context.
         """
         embed = discord.Embed(
-            description="Used [Krypton's](https://krypton.ninja) template",
+            description="Very nice bot indeed.",
             color=0x9C84EF,
         )
         embed.set_author(name="Bot Information")
-        embed.add_field(name="Owner:", value="Krypton#7331", inline=True)
+        embed.add_field(name="Owner:", value="Guldberg", inline=True)
         embed.add_field(
             name="Python Version:", value=f"{platform.python_version()}", inline=True
         )
         embed.add_field(
             name="Prefix:",
-            value=f"/ (Slash Commands) or {self.bot.config['prefix']} for normal commands",
+            value=f"/ (Slash Commands) or `{self.bot.env.prefix}` for normal commands",
             inline=False,
         )
         embed.set_footer(text=f"Requested by {context.author}")
@@ -133,7 +137,7 @@ class General(commands.Cog, name="general"):
         :param context: The hybrid command context.
         """
         embed = discord.Embed(
-            description=f"Invite me by clicking [here](https://discordapp.com/oauth2/authorize?&client_id={self.bot.config['application_id']}&scope=bot+applications.commands&permissions={self.bot.config['permissions']}).",
+            description=f"Invite me by clicking [here](https://discordapp.com/oauth2/authorize?&client_id={self.bot.env.application_id}&scope=bot+applications.commands&permissions={self.bot.env.bot_permissions}).",
             color=0xD75BF4,
         )
         try:

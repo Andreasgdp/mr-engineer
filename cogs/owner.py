@@ -12,10 +12,11 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from helpers import checks, db_manager
+from helpers.mr_engineer_bot import MrEngineer
 
 
 class Owner(commands.Cog, name="owner"):
-    def __init__(self, bot):
+    def __init__(self, bot: MrEngineer):
         self.bot = bot
 
     @commands.command(

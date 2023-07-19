@@ -1,3 +1,7 @@
 aiohttp
 aiosqlite
 discord.py
+cogwatch
+black
+python-dotenv
+flask

@@ -14,6 +14,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from helpers import checks
+from helpers.mr_engineer_bot import MrEngineer
 
 
 class Choice(discord.ui.View):
@@ -100,7 +101,7 @@ class RockPaperScissorsView(discord.ui.View):
 
 
 class Fun(commands.Cog, name="fun"):
-    def __init__(self, bot):
+    def __init__(self, bot: MrEngineer):
         self.bot = bot
 
     @commands.hybrid_command(name="randomfact", description="Get a random fact.")

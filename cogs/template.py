@@ -10,11 +10,12 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from helpers import checks
+from helpers.mr_engineer_bot import MrEngineer
 
 
 # Here we name the cog and create a new class for the cog.
 class Template(commands.Cog, name="template"):
-    def __init__(self, bot):
+    def __init__(self, bot: MrEngineer):
         self.bot = bot
 
     # Here you can just add your own commands, you'll always need to provide "self" as first parameter.
