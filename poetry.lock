@@ -201,6 +201,17 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "python-dotenv"
+version = "1.0.0"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.extras]
+cli = ["click (>=5.0)"]
+
+[[package]]
 name = "werkzeug"
 version = "2.3.6"
 description = "The comprehensive WSGI web application library."
@@ -229,7 +240,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "5c16b8e227d96bc1f3fcdd2af3bc6fed753a14677c376cac2c538544be680bb5"
+content-hash = "bd08ac208770d3499f31138da79e16ea2f8cb2120015c7c67b791113707bd70b"
 
 [metadata.files]
 aiohttp = []
@@ -250,5 +261,6 @@ itsdangerous = []
 jinja2 = []
 markupsafe = []
 multidict = []
+python-dotenv = []
 werkzeug = []
 yarl = []

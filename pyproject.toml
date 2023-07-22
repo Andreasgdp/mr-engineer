@@ -10,6 +10,7 @@ aiohttp = "^3.8.4"
 aiosqlite = "^0.19.0"
 discord = "^2.3.1"
 Flask = "^2.3.2"
+python-dotenv = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 
