@@ -7,13 +7,15 @@ Version: 5.5.0
 """
 
 import os
+import sqlite3
+from typing import Iterable
 
 import aiosqlite
 
 DATABASE_PATH = f"{os.path.realpath(os.path.dirname(__file__))}/../database/database.db"
 
 
-async def get_blacklisted_users() -> list:
+async def get_blacklisted_users() -> Iterable[sqlite3.Row]:
     """
     This function will return the list of all blacklisted users.
 

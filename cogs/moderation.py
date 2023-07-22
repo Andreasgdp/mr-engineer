@@ -7,12 +7,38 @@ Version: 5.5.0
 """
 
 import discord
-from discord import app_commands
+from discord import Member, User, app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
 from helpers import checks, db_manager
 from helpers.mr_engineer_bot import MrEngineer
+
+UNSPECIFIED_REASON = "Not specified"
+
+
+def sanctioned_embed(
+    member: Member,
+    sanctioner: User | Member,
+    reason: str,
+    sanction: str,
+    total: int | None = None,
+) -> discord.Embed:
+    """
+    Creates an embed for a sanction.
+    """
+
+    des_string = f"**{member}** was {sanction} by **{sanctioner}**!\nReason: {reason}"
+
+    if total:
+        des_string += f"\nTotal {sanction}s for this user: {total}"
+
+    embed = discord.Embed(
+        description=f"**{member}** was {sanction} by **{sanctioner}**!",
+        color=0x9C84EF,
+    )
+    embed.add_field(name="Reason:", value=reason)
+    return embed
 
 
 class Moderation(commands.Cog, name="moderation"):
@@ -31,7 +57,7 @@ class Moderation(commands.Cog, name="moderation"):
         reason="The reason why the user should be kicked.",
     )
     async def kick(
-        self, context: Context, user: discord.User, *, reason: str = "Not specified"
+        self, context: Context, user: discord.User, *, reason: str = UNSPECIFIED_REASON
     ) -> None:
         """
         Kick a user out of the server.
@@ -40,6 +66,7 @@ class Moderation(commands.Cog, name="moderation"):
         :param user: The user that should be kicked from the server.
         :param reason: The reason for the kick. Default is "Not specified".
         """
+        assert context.guild is not None
         member = context.guild.get_member(user.id) or await context.guild.fetch_member(
             user.id
         )
@@ -50,21 +77,17 @@ class Moderation(commands.Cog, name="moderation"):
             await context.send(embed=embed)
         else:
             try:
-                embed = discord.Embed(
-                    description=f"**{member}** was kicked by **{context.author}**!",
-                    color=0x9C84EF,
-                )
-                embed.add_field(name="Reason:", value=reason)
+                embed = sanctioned_embed(member, context.author, reason, "kicked")
                 await context.send(embed=embed)
                 try:
                     await member.send(
                         f"You were kicked by **{context.author}** from **{context.guild.name}**!\nReason: {reason}"
                     )
-                except:
+                except Exception as _e:
                     # Couldn't send a message in the private messages of the user
                     pass
                 await member.kick(reason=reason)
-            except:
+            except Exception as _e:
                 embed = discord.Embed(
                     description="An error occurred while trying to kick the user. Make sure my role is above the role of the user you want to kick.",
                     color=0xE02B2B,
@@ -83,7 +106,7 @@ class Moderation(commands.Cog, name="moderation"):
         nickname="The new nickname that should be set.",
     )
     async def nick(
-        self, context: Context, user: discord.User, *, nickname: str = None
+        self, context: Context, user: discord.User, *, nickname: str | None = None
     ) -> None:
         """
         Change the nickname of a user on a server.
@@ -92,6 +115,7 @@ class Moderation(commands.Cog, name="moderation"):
         :param user: The user that should have its nickname changed.
         :param nickname: The new nickname of the user. Default is None, which will reset the nickname.
         """
+        assert context.guild is not None
         member = context.guild.get_member(user.id) or await context.guild.fetch_member(
             user.id
         )
@@ -102,7 +126,7 @@ class Moderation(commands.Cog, name="moderation"):
                 color=0x9C84EF,
             )
             await context.send(embed=embed)
-        except:
+        except Exception as _e:
             embed = discord.Embed(
                 description="An error occurred while trying to change the nickname of the user. Make sure my role is above the role of the user you want to change the nickname.",
                 color=0xE02B2B,
@@ -121,7 +145,7 @@ class Moderation(commands.Cog, name="moderation"):
         reason="The reason why the user should be banned.",
     )
     async def ban(
-        self, context: Context, user: discord.User, *, reason: str = "Not specified"
+        self, context: Context, user: discord.User, *, reason: str = UNSPECIFIED_REASON
     ) -> None:
         """
         Bans a user from the server.
@@ -130,6 +154,7 @@ class Moderation(commands.Cog, name="moderation"):
         :param user: The user that should be banned from the server.
         :param reason: The reason for the ban. Default is "Not specified".
         """
+        assert context.guild is not None
         member = context.guild.get_member(user.id) or await context.guild.fetch_member(
             user.id
         )
@@ -140,21 +165,17 @@ class Moderation(commands.Cog, name="moderation"):
                 )
                 await context.send(embed=embed)
             else:
-                embed = discord.Embed(
-                    description=f"**{member}** was banned by **{context.author}**!",
-                    color=0x9C84EF,
-                )
-                embed.add_field(name="Reason:", value=reason)
+                embed = sanctioned_embed(member, context.author, reason, "banned")
                 await context.send(embed=embed)
                 try:
                     await member.send(
                         f"You were banned by **{context.author}** from **{context.guild.name}**!\nReason: {reason}"
                     )
-                except:
+                except Exception as _e:
                     # Couldn't send a message in the private messages of the user
                     pass
                 await member.ban(reason=reason)
-        except:
+        except Exception as _e:
             embed = discord.Embed(
                 title="Error!",
                 description="An error occurred while trying to ban the user. Make sure my role is above the role of the user you want to ban.",
@@ -192,7 +213,7 @@ class Moderation(commands.Cog, name="moderation"):
         reason="The reason why the user should be warned.",
     )
     async def warning_add(
-        self, context: Context, user: discord.User, *, reason: str = "Not specified"
+        self, context: Context, user: discord.User, *, reason: str = UNSPECIFIED_REASON
     ) -> None:
         """
         Warns a user in his private messages.
@@ -201,23 +222,20 @@ class Moderation(commands.Cog, name="moderation"):
         :param user: The user that should be warned.
         :param reason: The reason for the warn. Default is "Not specified".
         """
+        assert context.guild is not None
         member = context.guild.get_member(user.id) or await context.guild.fetch_member(
             user.id
         )
         total = await db_manager.add_warn(
             user.id, context.guild.id, context.author.id, reason
         )
-        embed = discord.Embed(
-            description=f"**{member}** was warned by **{context.author}**!\nTotal warns for this user: {total}",
-            color=0x9C84EF,
-        )
-        embed.add_field(name="Reason:", value=reason)
+        embed = sanctioned_embed(member, context.author, reason, "warned", total)
         await context.send(embed=embed)
         try:
             await member.send(
                 f"You were warned by **{context.author}** in **{context.guild.name}**!\nReason: {reason}"
             )
-        except:
+        except Exception as _e:
             # Couldn't send a message in the private messages of the user
             await context.send(
                 f"{member.mention}, you were warned by **{context.author}**!\nReason: {reason}"
@@ -243,6 +261,7 @@ class Moderation(commands.Cog, name="moderation"):
         :param user: The user that should get their warning removed.
         :param warn_id: The ID of the warning that should be removed.
         """
+        assert context.guild is not None
         member = context.guild.get_member(user.id) or await context.guild.fetch_member(
             user.id
         )
@@ -267,6 +286,7 @@ class Moderation(commands.Cog, name="moderation"):
         :param context: The hybrid command context.
         :param user: The user you want to get the warnings of.
         """
+        assert context.guild is not None
         warnings_list = await db_manager.get_warnings(user.id, context.guild.id)
         embed = discord.Embed(title=f"Warnings of {user}", color=0x9C84EF)
         description = ""
@@ -296,6 +316,7 @@ class Moderation(commands.Cog, name="moderation"):
         await context.send(
             "Deleting messages..."
         )  # Bit of a hacky way to make sure the bot responds to the interaction and doens't get a "Unknown Interaction" response
+        assert isinstance(context.channel, discord.TextChannel)
         purged_messages = await context.channel.purge(limit=amount + 1)
         embed = discord.Embed(
             description=f"**{context.author}** cleared **{len(purged_messages)-1}** messages!",
@@ -315,7 +336,7 @@ class Moderation(commands.Cog, name="moderation"):
         reason="The reason why the user should be banned.",
     )
     async def hackban(
-        self, context: Context, user_id: str, *, reason: str = "Not specified"
+        self, context: Context, user_id: str, *, reason: str = UNSPECIFIED_REASON
     ) -> None:
         """
         Bans a user without the user having to be in the server.
@@ -324,6 +345,7 @@ class Moderation(commands.Cog, name="moderation"):
         :param user_id: The ID of the user that should be banned.
         :param reason: The reason for the ban. Default is "Not specified".
         """
+        assert context.guild is not None
         try:
             await self.bot.http.ban(user_id, context.guild.id, reason=reason)
             user = self.bot.get_user(int(user_id)) or await self.bot.fetch_user(

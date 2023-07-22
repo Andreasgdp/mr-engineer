@@ -20,7 +20,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
 import exceptions
-from helpers import get_env
+from helpers import cmd_err_handlers, get_env
 from helpers.get_logger import logger
 from helpers.mr_engineer_bot import MrEngineer
 from keep_alive import keep_alive
@@ -30,33 +30,27 @@ env = get_env.Env()
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
 else:
-    with open(f"{os.path.realpath(os.path.dirname(__file__))}/config.json") as file:
+    with open(
+        f"{os.path.realpath(os.path.dirname(__file__))}/config.json", encoding="utf-8"
+    ) as file:
         config = json.load(file)
 
 
 bot = MrEngineer()
 bot.logger = logger
+bot.config = config
 
 
 async def init_db():
     async with aiosqlite.connect(
         f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
-    ) as db:
+    ) as database:
         with open(
-            f"{os.path.realpath(os.path.dirname(__file__))}/database/schema.sql"
-        ) as file:
-            await db.executescript(file.read())
-        await db.commit()
-
-
-"""
-Create a bot variable to access the config file in cogs so that you don't need to import it every time.
-
-The config is available using the following code:
-- bot.config # In this file
-- self.bot.config # In cogs
-"""
-bot.config = config
+            f"{os.path.realpath(os.path.dirname(__file__))}/database/schema.sql",
+            encoding="utf-8",
+        ) as db_schema_file:
+            await database.executescript(db_schema_file.read())
+        await database.commit()
 
 
 @bot.event
@@ -66,10 +60,13 @@ async def on_ready() -> None:
     """
     watcher = Watcher(bot, path="cogs", preload=True, debug=False)
     await watcher.start()
-    bot.logger.info(f"Logged in as {bot.user.name}")
-    bot.logger.info(f"discord.py API version: {discord.__version__}")
-    bot.logger.info(f"Python version: {platform.python_version()}")
-    bot.logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
+    assert bot.user is not None
+    bot.logger.info("Logged in as %s", bot.user.name)
+    bot.logger.info("discord.py API version: %s", discord.__version__)
+    bot.logger.info("Python version: %s", platform.python_version())
+    bot.logger.info(
+        "Running on: %s %s (%s)", platform.system(), platform.release(), os.name
+    )
     bot.logger.info("-------------------")
     status_task.start()
     if config["sync_commands_globally"]:
@@ -105,16 +102,25 @@ async def on_command_completion(context: Context) -> None:
 
     :param context: The context of the command that has been executed.
     """
+    assert context.command is not None
     full_command_name = context.command.qualified_name
     split = full_command_name.split(" ")
     executed_command = str(split[0])
     if context.guild is not None:
         bot.logger.info(
-            f"Executed {executed_command} command in {context.guild.name} (ID: {context.guild.id}) by {context.author} (ID: {context.author.id})"
+            "Executed %s command in %s (ID: %s) by %s (ID: %s)",
+            executed_command,
+            context.guild.name,
+            context.guild.id,
+            context.author,
+            context.author.id,
         )
     else:
         bot.logger.info(
-            f"Executed {executed_command} command by {context.author} (ID: {context.author.id}) in DMs"
+            "Executed %s command by %s (ID: %s)",
+            executed_command,
+            context.author,
+            context.author.id,
         )
 
 
@@ -127,71 +133,17 @@ async def on_command_error(context: Context, error) -> None:
     :param error: The error that has been faced.
     """
     if isinstance(error, commands.CommandOnCooldown):
-        minutes, seconds = divmod(error.retry_after, 60)
-        hours, minutes = divmod(minutes, 60)
-        hours = hours % 24
-        embed = discord.Embed(
-            description=f"**Please slow down** - You can use this command again in {f'{round(hours)} hours' if round(hours) > 0 else ''} {f'{round(minutes)} minutes' if round(minutes) > 0 else ''} {f'{round(seconds)} seconds' if round(seconds) > 0 else ''}.",
-            color=0xE02B2B,
-        )
-        await context.send(embed=embed)
+        await cmd_err_handlers.handle_command_on_cooldown(context, error)
     elif isinstance(error, exceptions.UserBlacklisted):
-        """
-        The code here will only execute if the error is an instance of 'UserBlacklisted', which can occur when using
-        the @checks.not_blacklisted() check in your command, or you can raise the error by yourself.
-        """
-        embed = discord.Embed(
-            description="You are blacklisted from using the bot!", color=0xE02B2B
-        )
-        await context.send(embed=embed)
-        if context.guild:
-            bot.logger.warning(
-                f"{context.author} (ID: {context.author.id}) tried to execute a command in the guild {context.guild.name} (ID: {context.guild.id}), but the user is blacklisted from using the bot."
-            )
-        else:
-            bot.logger.warning(
-                f"{context.author} (ID: {context.author.id}) tried to execute a command in the bot's DMs, but the user is blacklisted from using the bot."
-            )
+        await cmd_err_handlers.handle_user_blacklisted(context, bot)
     elif isinstance(error, exceptions.UserNotOwner):
-        """
-        Same as above, just for the @checks.is_owner() check.
-        """
-        embed = discord.Embed(
-            description="You are not the owner of the bot!", color=0xE02B2B
-        )
-        await context.send(embed=embed)
-        if context.guild:
-            bot.logger.warning(
-                f"{context.author} (ID: {context.author.id}) tried to execute an owner only command in the guild {context.guild.name} (ID: {context.guild.id}), but the user is not an owner of the bot."
-            )
-        else:
-            bot.logger.warning(
-                f"{context.author} (ID: {context.author.id}) tried to execute an owner only command in the bot's DMs, but the user is not an owner of the bot."
-            )
+        await cmd_err_handlers.handle_user_not_owner(context, bot)
     elif isinstance(error, commands.MissingPermissions):
-        embed = discord.Embed(
-            description="You are missing the permission(s) `"
-            + ", ".join(error.missing_permissions)
-            + "` to execute this command!",
-            color=0xE02B2B,
-        )
-        await context.send(embed=embed)
+        await cmd_err_handlers.handle_missing_permissions(context, error)
     elif isinstance(error, commands.BotMissingPermissions):
-        embed = discord.Embed(
-            description="I am missing the permission(s) `"
-            + ", ".join(error.missing_permissions)
-            + "` to fully perform this command!",
-            color=0xE02B2B,
-        )
-        await context.send(embed=embed)
+        await cmd_err_handlers.handle_bot_missing_permissions(context, error)
     elif isinstance(error, commands.MissingRequiredArgument):
-        embed = discord.Embed(
-            title="Error!",
-            # We need to capitalize because the command arguments have no capital letter in the code.
-            description=str(error).capitalize(),
-            color=0xE02B2B,
-        )
-        await context.send(embed=embed)
+        await cmd_err_handlers.handle_missing_required_argument(context, error)
     else:
         raise error
 
@@ -200,15 +152,17 @@ async def load_cogs() -> None:
     """
     The code in this function is executed whenever the bot will start.
     """
-    for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
-        if file.endswith(".py"):
-            extension = file[:-3]
+    for cog_file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
+        if cog_file.endswith(".py"):
+            extension = cog_file[:-3]
             try:
                 await bot.load_extension(f"cogs.{extension}")
-                bot.logger.info(f"Loaded extension '{extension}'")
+                bot.logger.info("Loaded extension %s", extension)
             except Exception as ex:
                 exception = f"{type(ex).__name__}: {ex}"
-                bot.logger.error(f"Failed to load extension {extension}\n{exception}")
+                bot.logger.error(
+                    "Failed to load extension %s\n%s", extension, exception
+                )
 
 
 asyncio.run(init_db())

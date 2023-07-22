@@ -249,7 +249,7 @@ class Owner(commands.Cog, name="owner"):
         :param context: The hybrid command context.
         """
         blacklisted_users = await db_manager.get_blacklisted_users()
-        if len(blacklisted_users) == 0:
+        if len(list(blacklisted_users)) == 0:
             embed = discord.Embed(
                 description="There are currently no blacklisted users.", color=0xE02B2B
             )

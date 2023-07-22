@@ -68,20 +68,29 @@ class RockPaperScissors(discord.ui.Select):
         bot_choice_index = choices[bot_choice]
 
         result_embed = discord.Embed(color=0x9C84EF)
+        assert interaction.user.avatar is not None
         result_embed.set_author(
             name=interaction.user.name, icon_url=interaction.user.avatar.url
         )
 
-        if user_choice_index == bot_choice_index:
+        is_user_rock = user_choice_index == 0
+        is_user_paper = user_choice_index == 1
+        is_user_scissors = user_choice_index == 2
+        is_bot_rock = bot_choice_index == 0
+        is_bot_paper = bot_choice_index == 1
+        is_bot_scissors = bot_choice_index == 2
+
+        is_draw = user_choice_index == bot_choice_index
+        is_user_win = (
+            (is_user_paper and is_bot_rock)
+            or (is_user_scissors and is_bot_paper)
+            or (is_user_rock and is_bot_scissors)
+        )
+
+        if is_draw:
             result_embed.description = f"**That's a draw!**\nYou've chosen {user_choice} and I've chosen {bot_choice}."
             result_embed.colour = 0xF59E42
-        elif user_choice_index == 0 and bot_choice_index == 2:
-            result_embed.description = f"**You won!**\nYou've chosen {user_choice} and I've chosen {bot_choice}."
-            result_embed.colour = 0x9C84EF
-        elif user_choice_index == 1 and bot_choice_index == 0:
-            result_embed.description = f"**You won!**\nYou've chosen {user_choice} and I've chosen {bot_choice}."
-            result_embed.colour = 0x9C84EF
-        elif user_choice_index == 2 and bot_choice_index == 1:
+        elif is_user_win:
             result_embed.description = f"**You won!**\nYou've chosen {user_choice} and I've chosen {bot_choice}."
             result_embed.colour = 0x9C84EF
         else:
@@ -89,6 +98,7 @@ class RockPaperScissors(discord.ui.Select):
                 f"**I won!**\nYou've chosen {user_choice} and I've chosen {bot_choice}."
             )
             result_embed.colour = 0xE02B2B
+
         await interaction.response.edit_message(
             embed=result_embed, content=None, view=None
         )

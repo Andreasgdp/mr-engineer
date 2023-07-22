@@ -37,6 +37,7 @@ class General(commands.Cog, name="general"):
         )
         for command_category in self.bot.cogs:
             cog = self.bot.get_cog(command_category.lower())
+            assert cog is not None
             bot_commands = cog.get_commands()
             data = []
             for command in bot_commands:
@@ -87,6 +88,7 @@ class General(commands.Cog, name="general"):
 
         :param context: The hybrid command context.
         """
+        assert context.guild is not None
         roles = [role.name for role in context.guild.roles]
         if len(roles) > 50:
             roles = roles[:50]
@@ -159,7 +161,7 @@ class General(commands.Cog, name="general"):
         :param context: The hybrid command context.
         """
         embed = discord.Embed(
-            description=f"Join the support server for the bot by clicking [here](https://discord.gg/mTBrXyWxAF).",
+            description="Join the support server for the bot by clicking [here](https://discord.gg/mTBrXyWxAF).",
             color=0xD75BF4,
         )
         try:
